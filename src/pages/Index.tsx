@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
@@ -20,10 +20,43 @@ const ANIMALS: Animal[] = [
   { id: '4', name: 'Коала', emoji: '🐨', food: 'Эвкалипт', foodEmoji: '🌿', fact: 'Коалы спят до 22 часов в день!' },
   { id: '5', name: 'Обезьяна', emoji: '🐵', food: 'Банан', foodEmoji: '🍌', fact: 'Обезьяны очень умные и ловкие!' },
   { id: '6', name: 'Кот', emoji: '🐱', food: 'Рыба', foodEmoji: '🐟', fact: 'Кошки - отличные охотники!' },
+  { id: '7', name: 'Жираф', emoji: '🦒', food: 'Листья', foodEmoji: '🍃', fact: 'Жирафы могут дотянуться до самых высоких веток!' },
+  { id: '8', name: 'Слон', emoji: '🐘', food: 'Трава', foodEmoji: '🌾', fact: 'Слоны едят до 150 кг растений в день!' },
+  { id: '9', name: 'Медведь', emoji: '🐻', food: 'Мёд', foodEmoji: '🍯', fact: 'Медведи обожают сладкий мёд!' },
+  { id: '10', name: 'Белка', emoji: '🐿️', food: 'Орехи', foodEmoji: '🌰', fact: 'Белки запасают орехи на зиму!' },
+  { id: '11', name: 'Енот', emoji: '🦝', food: 'Ягоды', foodEmoji: '🫐', fact: 'Еноты моют свою еду перед едой!' },
+  { id: '12', name: 'Лиса', emoji: '🦊', food: 'Мышь', foodEmoji: '🐭', fact: 'Лисы - хитрые охотники!' },
+  { id: '13', name: 'Корова', emoji: '🐮', food: 'Сено', foodEmoji: '🌱', fact: 'Коровы дают нам молоко!' },
+  { id: '14', name: 'Курица', emoji: '🐔', food: 'Зерно', foodEmoji: '🌾', fact: 'Курицы несут яйца каждый день!' },
+  { id: '15', name: 'Пингвин', emoji: '🐧', food: 'Креветки', foodEmoji: '🦐', fact: 'Пингвины отличные пловцы!' },
 ];
 
 type GameMode = 'menu' | 'learn' | 'play';
 type Difficulty = 'easy' | 'medium' | 'hard';
+
+interface GameStats {
+  totalGames: number;
+  totalStars: number;
+  bestStreak: number;
+  completedLevels: { easy: number; medium: number; hard: number };
+}
+
+const loadStats = (): GameStats => {
+  const saved = localStorage.getItem('animalGameStats');
+  if (saved) {
+    return JSON.parse(saved);
+  }
+  return {
+    totalGames: 0,
+    totalStars: 0,
+    bestStreak: 0,
+    completedLevels: { easy: 0, medium: 0, hard: 0 }
+  };
+};
+
+const saveStats = (stats: GameStats) => {
+  localStorage.setItem('animalGameStats', JSON.stringify(stats));
+};
 
 export default function Index() {
   const [mode, setMode] = useState<GameMode>('menu');
@@ -35,6 +68,11 @@ export default function Index() {
   const [showHint, setShowHint] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [learnIndex, setLearnIndex] = useState(0);
+  const [stats, setStats] = useState<GameStats>(loadStats());
+
+  useEffect(() => {
+    saveStats(stats);
+  }, [stats]);
 
   const shuffleArray = <T,>(array: T[]): T[] => {
     const newArray = [...array];
@@ -48,7 +86,8 @@ export default function Index() {
   const startGame = (diff: Difficulty) => {
     setDifficulty(diff);
     const count = diff === 'easy' ? 3 : diff === 'medium' ? 4 : 6;
-    const selected = ANIMALS.slice(0, count);
+    const shuffled = shuffleArray([...ANIMALS]);
+    const selected = shuffled.slice(0, count);
     setCurrentAnimals(shuffleArray([...selected]));
     setMatches(new Set());
     setSelectedAnimal(null);
@@ -75,6 +114,16 @@ export default function Index() {
       if (newMatches.size === currentAnimals.length) {
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 3000);
+        
+        setStats(prev => ({
+          totalGames: prev.totalGames + 1,
+          totalStars: prev.totalStars + stars + 1,
+          bestStreak: Math.max(prev.bestStreak, stars + 1),
+          completedLevels: {
+            ...prev.completedLevels,
+            [difficulty]: prev.completedLevels[difficulty] + 1
+          }
+        }));
       }
     } else {
       setSelectedAnimal(null);
@@ -101,12 +150,36 @@ export default function Index() {
             <p className="text-xl sm:text-2xl text-[#555555]">Развивающая игра для детей</p>
           </div>
 
+          <Card className="p-6 bg-white/90 backdrop-blur shadow-xl mb-6 animate-bounce-in">
+            <div className="text-center">
+              <h3 className="text-2xl font-bold text-[#1A1F2C] mb-4">📊 Твоя статистика</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-gradient-to-br from-[#8B5CF6] to-[#7E69AB] p-4 rounded-xl text-white">
+                  <div className="text-3xl font-bold">{stats.totalGames}</div>
+                  <div className="text-sm">Игр сыграно</div>
+                </div>
+                <div className="bg-gradient-to-br from-[#F97316] to-[#ea6a0f] p-4 rounded-xl text-white">
+                  <div className="text-3xl font-bold">{stats.totalStars}</div>
+                  <div className="text-sm">Всего звёзд</div>
+                </div>
+                <div className="bg-gradient-to-br from-[#0EA5E9] to-[#0c8fc7] p-4 rounded-xl text-white">
+                  <div className="text-3xl font-bold">{stats.bestStreak}</div>
+                  <div className="text-sm">Лучшая серия</div>
+                </div>
+                <div className="bg-gradient-to-br from-[#22c55e] to-[#16a34a] p-4 rounded-xl text-white">
+                  <div className="text-3xl font-bold">{Object.values(stats.completedLevels).reduce((a, b) => a + b, 0)}</div>
+                  <div className="text-sm">Уровней пройдено</div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
           <div className="grid sm:grid-cols-2 gap-6 mb-8">
             <Card className="p-6 sm:p-8 bg-white/90 backdrop-blur hover:scale-105 transition-transform cursor-pointer shadow-xl" onClick={() => setMode('learn')}>
               <div className="text-center">
                 <div className="text-5xl sm:text-6xl mb-4 animate-float">📚</div>
                 <h2 className="text-2xl sm:text-3xl font-bold text-[#1A1F2C] mb-2">Обучение</h2>
-                <p className="text-base sm:text-lg text-[#555555]">Узнай о животных и их питании</p>
+                <p className="text-base sm:text-lg text-[#555555]">Изучи всех {ANIMALS.length} животных!</p>
               </div>
             </Card>
 
